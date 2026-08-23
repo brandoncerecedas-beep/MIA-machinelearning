@@ -1,0 +1,229 @@
+\documentclass[conference]{IEEEtran}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{microtype}
+
+\hypersetup{
+	colorlinks=true,
+	linkcolor=blue,
+	citecolor=blue,
+	urlcolor=blue
+}
+
+\begin{document}
+	
+	\title{Midiendo la Sorpresa: La Divergencia de Kullback--Leibler y su Papel en el Aprendizaje Automático}
+	
+	\author{
+		\IEEEauthorblockN{Brandon Cereceda Silva}
+		\IEEEauthorblockA{\textit{Facultad de Ingeniería} \\
+			\textit{Universidad Autónoma del Estado de México (UAEMex)} \\
+			Toluca, Estado de México, México}
+	}
+	
+	\maketitle
+	
+	\begin{abstract}
+		La Divergencia de Kullback--Leibler (KL), también conocida como entropía relativa, es una herramienta matemática fundamental en la teoría de la información y el aprendizaje automático. En este artículo de divulgación se explica de manera intuitiva y pedagógica qué mide la divergencia KL mediante un ejemplo cotidiano: el clasificador de correo no deseado (\textit{spam}). Se analiza su relación matemática con la entropía cruzada, se desglosan exhaustivamente los componentes de cada ecuación, se presenta un ejemplo numérico paso a paso y se ilustra por qué su propiedad de no simetría resulta determinante al entrenar algoritmos de inteligencia artificial.
+	\end{abstract}
+	
+	\begin{IEEEkeywords}
+		Divergencia de Kullback--Leibler, entropía cruzada, teoría de la información, filtro de spam, aprendizaje automático, optimización.
+	\end{IEEEkeywords}
+	
+	\section{Introducción e Intuición Cotidiana}
+	En la vida digital cotidiana, interactuamos continuamente con sistemas que toman decisiones probabilísticas. Un ejemplo clásico es el filtro de correo no deseado (\textit{spam}). Cuando un correo electrónico arriba a la bandeja de entrada, existen dos perspectivas probabilísticas en juego:
+	\begin{enumerate}
+		\item \textbf{La realidad empírica u objetiva ($P$):} Es la verdad absoluta del correo. Si el mensaje es efectivamente fraudulento o no deseado, la probabilidad real es $P(\text{spam}) = 1$ y $P(\text{legítimo}) = 0$.
+		\item \textbf{La hipótesis o creencia del algoritmo ($Q$):} Es la estimación numérica calculada por el modelo a partir de las palabras y remitente (p. ej., asignando $Q(\text{spam}) = 0.80$ y $Q(\text{legítimo}) = 0.20$).
+	\end{enumerate}
+	
+	Si el modelo fuese perfecto, su creencia coincidiría exactamente con la realidad ($Q = P$). No obstante, en la práctica siempre existe una discrepancia. La \textbf{Divergencia de Kullback--Leibler (KL)} \cite{kullback1951} mide precisamente el grado de ``sorpresa'', ineficiencia o pérdida de información que ocurre al describir la realidad $P$ mediante la aproximación imperfecta $Q$.
+	
+	\section{Definición de la Divergencia KL y Desglose de Términos}
+	Propuesta originalmente en 1951 por Solomon Kullback y Richard Leibler, la divergencia KL cuantifica la penalización promedio que sufrimos al usar un modelo de probabilidades $Q$ en lugar de la distribución auténtica $P$ \cite{cover2006elements}. Para variables aleatorias discretas, se define formalmente como:
+	
+	\begin{equation}
+		D_{\text{KL}}(P \parallel Q) = \sum_{x \in \mathcal{X}} P(x) \log\left(\frac{P(x)}{Q(x)}\right)
+		\label{eq:kl_divergence}
+	\end{equation}
+	
+	\noindent \textbf{Significado detallado de los términos de la ecuación (\ref{eq:kl_divergence}):}
+	\begin{itemize}
+		\item $D_{\text{KL}}(P \parallel Q)$: Valor escalar no negativo que representa la divergencia de $Q$ respecto a $P$ (medida en bits si el logaritmo es en base 2, o en nats si es natural).
+		\item $\mathcal{X}$: Espacio muestral o conjunto de todas las categorías posibles (en nuestro ejemplo, $\mathcal{X} = \{\text{spam}, \text{legítimo}\}$).
+		\item $x$: Cada una de las categorías o eventos individuales dentro del espacio $\mathcal{X}$.
+		\item $P(x)$: Probabilidad real de ocurrencia del evento $x$ en el mundo físico.
+		\item $Q(x)$: Probabilidad estimada por el modelo de que ocurra el evento $x$.
+		\item $\frac{P(x)}{Q(x)}$: Razón de probabilidades. Si el modelo es exacto ($Q(x) = P(x)$), la razón es igual a $1$, haciendo que su logaritmo sea cero.
+		\item $\log\left(\frac{P(x)}{Q(x)}\right)$: Factor de discrepancia individual. Representa la sorpresa o costo informativo adicional que introduce el modelo para el evento $x$.
+		\item $\sum_{x \in \mathcal{X}} P(x) [\dots]$: Esperanza matemática bajo la distribución verdadera $P$. Pondera la penalización de cada evento según qué tan frecuente es en la realidad.
+	\end{itemize}
+	
+	Por la desigualdad de Jensen y el teorema de Gibbs, se garantiza que:
+	\begin{equation}
+		D_{\text{KL}}(P \parallel Q) \ge 0
+	\end{equation}
+	donde $D_{\text{KL}}(P \parallel Q) = 0$ ocurre si y solo si $P(x) = Q(x)$ para todo evento $x \in \mathcal{X}$.
+	
+	\section{Conexión con la Entropía Cruzada}
+	En el entrenamiento de modelos de clasificación y redes neuronales, la divergencia KL se vincula de manera directa e inseparable con la entropía de Shannon y la entropía cruzada.
+	
+	\subsection{Entropía de Shannon: $H(P)$}
+	Mide la cantidad intrínseca de incertidumbre o desorden contenida en la propia naturaleza de los datos reales:
+	\begin{equation}
+		H(P) = -\sum_{x \in \mathcal{X}} P(x) \log P(x)
+		\label{eq:shannon_entropy}
+	\end{equation}
+	\begin{itemize}
+		\item $H(P)$: Límite teórico mínimo e irreducible de información necesario para describir la realidad $P$.
+		\item $-\log P(x)$: Cantidad de auto-información o sorpresa inherente al evento $x$.
+	\end{itemize}
+	
+	\subsection{Entropía Cruzada: $H(P, Q)$}
+	Mide el costo total promedio en bits que se paga al codificar los eventos generados por la realidad $P$ utilizando el esquema propuesto por el modelo $Q$:
+	\begin{equation}
+		H(P, Q) = -\sum_{x \in \mathcal{X}} P(x) \log Q(x)
+		\label{eq:cross_entropy}
+	\end{equation}
+	\begin{itemize}
+		\item $H(P, Q)$: Costo total de codificación bajo el modelo imperfecto $Q$.
+		\item $-\log Q(x)$: Longitud del código o penalización asignada por el modelo $Q$ al evento $x$.
+	\end{itemize}
+	
+	\subsection{La Identidad Fundamental de Descomposición}
+	Expandiendo algebraicamente el logaritmo de un cociente en (\ref{eq:kl_divergence}), obtenemos:
+	\begin{align}
+		D_{\text{KL}}(P \parallel Q) &= \sum_{x} P(x)\log P(x) - \sum_{x} P(x)\log Q(x) \nonumber \\
+		&= -H(P) + H(P, Q)
+	\end{align}
+	Reordenando los términos, se deduce la relación universal:
+	\begin{equation}
+		H(P, Q) = H(P) + D_{\text{KL}}(P \parallel Q)
+		\label{eq:decomposition}
+	\end{equation}
+	
+	\noindent \textbf{Interpretación intuitiva:} El costo total asumido por el modelo ($H(P, Q)$) es igual a la incertidumbre inherente de los datos ($H(P)$) más el costo adicional provocado por la imperfección del clasificador ($D_{\text{KL}}(P \parallel Q)$).
+	
+	\subsection{Equivalencia en Optimización de Aprendizaje Automático}
+	Dado que el conjunto de datos de entrenamiento ($P$) no cambia durante el entrenamiento, la entropía real $H(P)$ es una constante fija. En consecuencia:
+	\begin{equation}
+		\arg\min_{\theta} H(P, Q_\theta) \equiv \arg\min_{\theta} D_{\text{KL}}(P \parallel Q_\theta)
+		\label{eq:optimization}
+	\end{equation}
+	\begin{itemize}
+		\item $\theta$: Vector de parámetros internos (pesos y sesgos) ajustables del algoritmo.
+		\item $Q_\theta$: Distribución predicha por el modelo parametrizado por $\theta$.
+		\item $\arg\min_\theta$: Operador de optimización que busca la configuración de parámetros $\theta$ que produce el mínimo error posible.
+	\end{itemize}
+	
+	Por tanto, minimizar la pérdida por entropía cruzada durante el entrenamiento supervisado equivale formalmente a minimizar la divergencia KL entre la verdad y la predicción del modelo \cite{bishop2006pattern}.
+	
+	\section{Asimetría de la Divergencia KL}
+	A diferencia de una distancia geométrica convencional (donde la distancia de $A$ a $B$ es idéntica a la de $B$ a $A$), la divergencia KL no es simétrica:
+	\begin{equation}
+		D_{\text{KL}}(P \parallel Q) \neq D_{\text{KL}}(Q \parallel P)
+	\end{equation}
+	
+	Esta propiedad genera dos comportamientos cualitativamente opuestos según el sentido del cálculo:
+	
+	\subsection{Divergencia hacia adelante ($D_{\text{KL}}(P \parallel Q)$)}
+	Denominada también divergencia inclusiva o \textit{zero-avoiding}:
+	\begin{itemize}
+		\item Si un evento ocurre en la realidad ($P(x) > 0$), pero el modelo predice erróneamente probabilidad nula ($Q(x) \to 0$), la penalización matemática se dispara a infinito ($\log(P/0) \to \infty$).
+		\item En el filtro de spam, esto significa que el algoritmo recibe un castigo desmesurado si asume como ``imposible'' una palabra que sí aparece en correos legítimos. Esto obliga al modelo a extender sus probabilidades sobre todo el soporte de $P$.
+	\end{itemize}
+	
+	\subsection{Divergencia hacia atrás ($D_{\text{KL}}(Q \parallel P)$)}
+	Denominada divergencia exclusiva o \textit{zero-forcing}:
+	\begin{itemize}
+		\item La ponderación está dominada por $Q(x)$. Si $P(x) = 0$, el modelo prefiere fijar $Q(x) = 0$ para no pagar costo alguno, concentrándose únicamente en una de las modas principales de la distribución.
+	\end{itemize}
+	
+	\section{Ejemplo Numérico Demostrativo}
+	Para ilustrar el cálculo y la asimetría de forma concreta, consideremos un servidor de correo con dos categorías $\mathcal{X} = \{\text{spam}, \text{legítimo}\}$.
+	
+	\noindent Supongamos que la distribución real de tráfico en el servidor es:
+	\begin{itemize}
+		\item $P(\text{spam}) = 0.90$
+		\item $P(\text{legítimo}) = 0.10$
+	\end{itemize}
+	
+	\noindent El clasificador evalúa un lote de correos y estima las siguientes probabilidades:
+	\begin{itemize}
+		\item $Q(\text{spam}) = 0.80$
+		\item $Q(\text{legítimo}) = 0.20$
+	\end{itemize}
+	
+	\subsection{Cálculo de $D_{\text{KL}}(P \parallel Q)$ (en bits, base 2)}
+	Aplicando la definición de la ecuación (\ref{eq:kl_divergence}):
+	\begin{align}
+		D_{\text{KL}}(P \parallel Q) &= 0.90 \cdot \log_2\left(\frac{0.90}{0.80}\right) + 0.10 \cdot \log_2\left(\frac{0.10}{0.20}\right) \nonumber \\
+		&= 0.90 \cdot \log_2(1.125) + 0.10 \cdot \log_2(0.5) \nonumber \\
+		&\approx 0.90 \cdot (0.1699) + 0.10 \cdot (-1.0000) \nonumber \\
+		&= 0.1529 - 0.1000 = 0.0529 \text{ bits}
+	\end{align}
+	
+	\noindent \textbf{Interpretación:} El clasificador genera un costo extra o penalización promedio de apenas $\approx 0.0529$ bits por correo debido a su discrepancia con la realidad.
+	
+	\subsection{Demostración Numérica de la Asimetría}
+	Si invertimos el orden de las distribuciones calculando $D_{\text{KL}}(Q \parallel P)$:
+	\begin{align}
+		D_{\text{KL}}(Q \parallel P) &= 0.80 \cdot \log_2\left(\frac{0.80}{0.90}\right) + 0.20 \cdot \log_2\left(\frac{0.20}{0.10}\right) \nonumber \\
+		&= 0.80 \cdot (-0.1699) + 0.20 \cdot (1.0000) \nonumber \\
+		&= -0.1359 + 0.2000 = 0.0641 \text{ bits}
+	\end{align}
+	
+	\noindent Como se observa claramente:
+	\begin{equation}
+		D_{\text{KL}}(P \parallel Q) = 0.0529 \text{ bits} \neq D_{\text{KL}}(Q \parallel P) = 0.0641 \text{ bits}
+	\end{equation}
+	lo que demuestra numéricamente que la divergencia KL no es una distancia simétrica.
+	
+	\section{Conclusiones y Recomendaciones}
+	La Divergencia de Kullback--Leibler unifica la cuantificación de información con la optimización de sistemas predictivos modernos.
+	
+	\noindent \textbf{Recomendaciones técnicas:}
+	\begin{enumerate}
+		\item \textbf{Evitar probabilidades nulas:} Implementar suavizado de Laplace o un valor mínimo $\varepsilon > 0$ en las salidas softmax para eludir divergencias numéricas a infinito.
+		\item \textbf{Alternativas simétricas:} Cuando se requiera una distancia formal y acotada entre distribuciones, se sugiere emplear la divergencia de Jensen--Shannon ($JSD$) o la distancia de Wasserstein \cite{wang2026generalized}.
+	\end{enumerate}
+	
+	\section{Incertidumbres y Limitaciones}
+	\begin{itemize}
+		\item \textbf{Continuidad absoluta:} La divergencia KL está indefinida si el soporte de $P$ no está estrictamente contenido en el soporte de $Q$.
+		\item \textbf{No métrica:} No satisface la desigualdad triangular ni la simetría métrica.
+		\item \textbf{Vulnerabilidad ante sesgos:} Minimizar la divergencia KL en datos de prueba no inmuniza al sistema contra sesgos de selección o cambios de dominio (\textit{distribution shift}).
+	\end{itemize}
+	
+	\section*{Declaración sobre el Uso de Inteligencia Artificial Generativa}
+	\noindent \textbf{Uso de GenAI:} Se declara explícitamente que la redacción, estructuración matemática y codificación \LaTeX{} bajo estándar IEEE de este artículo fueron elaboradas con el soporte de herramientas de Inteligencia Artificial Generativa, contando con revisión conceptual y validación técnica humana.
+	
+	\begin{thebibliography}{00}
+		
+		\bibitem{kullback1951}
+		S.~Kullback and R.~A. Leibler, ``On information and sufficiency,'' \emph{The Annals of Mathematical Statistics}, vol.~22, no.~1, pp. 79--86, 1951. \url{https://projecteuclid.org/journals/annals-of-mathematical-statistics/volume-22/issue-1/On-Information-and-Sufficiency/10.1214/aoms/1177729694.short}
+		
+		\bibitem{cover2006elements}
+		T.~M. Cover and J.~A. Thomas, \emph{Elements of Information Theory}, 2nd~ed. Hoboken, NJ: John Wiley \& Sons, 2006.
+		
+		\bibitem{bishop2006pattern}
+		C.~M. Bishop, \emph{Pattern Recognition and Machine Learning}. New York, NY: Springer, 2006.
+		
+		\bibitem{wang2026generalized}
+		Y.~Wang, H.~Zhang, and L.~Liu, ``Generalized Kullback-Leibler divergence loss,'' \emph{arXiv preprint arXiv:2503.08038}, 2026. \url{https://arxiv.org/html/2503.08038v2}
+		
+		\bibitem{wikipedia2026kl}
+		Wikipedia Contributors, ``Kullback–Leibler divergence,'' \emph{Wikipedia, The Free Encyclopedia}, 2026. \url{https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence}
+		
+	\end{thebibliography}
+	
+\end{document}
+
+
